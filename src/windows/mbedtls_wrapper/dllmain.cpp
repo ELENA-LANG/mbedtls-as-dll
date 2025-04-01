@@ -25,6 +25,8 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 #include "pch.h"
 
+#define MBEDTLS_PEM_PARSE_C
+
 #include "mbedtls/net_sockets.h"
 #include "mbedtls/ssl.h"
 #include "mbedtls/entropy.h"
@@ -32,7 +34,328 @@
 #include "mbedtls/debug.h"
 #include "mbedtls/platform.h"
 
+#include "mbedtls/ssl_cache.h"
+
+#include "mbedtls/x509.h"
+
+#include "test_cert.h"
+
 #define EXTERN_DLL_EXPORT extern "C" __declspec(dllexport)
+
+struct ServerContext
+{
+   mbedtls_ssl_cache_context* cache;
+   mbedtls_x509_crt* srvcert;
+   mbedtls_x509_crt* cachain;
+   mbedtls_pk_context* pkey;
+
+   void init()
+   {
+      mbedtls_ssl_cache_init(cache);
+      mbedtls_x509_crt_init(srvcert);
+      mbedtls_x509_crt_init(cachain);
+      mbedtls_pk_init(pkey);
+   }
+
+   void close()
+   {
+      mbedtls_x509_crt_free(srvcert);
+      mbedtls_x509_crt_free(cachain);
+      mbedtls_ssl_cache_free(cache);
+      mbedtls_pk_free(pkey);
+   }
+
+   ServerContext()
+   {
+      cache = new mbedtls_ssl_cache_context();
+      srvcert = new mbedtls_x509_crt();
+      cachain = new mbedtls_x509_crt();
+      pkey = new mbedtls_pk_context();
+   }
+   virtual ~ServerContext()
+   {
+      delete cachain;
+      delete srvcert;
+      delete cache;
+      delete pkey;
+   }
+};
+
+struct Environment
+{
+   mbedtls_ssl_config* conf;
+   mbedtls_ctr_drbg_context* ctr_drbg;
+   mbedtls_entropy_context* entropy;
+
+   ServerContext* server;
+
+   void init()
+   {
+      mbedtls_ctr_drbg_init(ctr_drbg);
+      mbedtls_ssl_config_init(conf);
+      mbedtls_entropy_init(entropy);
+   }
+
+   void close()
+   {
+      if (server)
+         server->close();
+
+      mbedtls_ctr_drbg_free(ctr_drbg);
+      mbedtls_ssl_config_free(conf);
+      mbedtls_entropy_free(entropy);
+   }
+
+   Environment()
+   {
+      ctr_drbg = new mbedtls_ctr_drbg_context();
+      conf = new mbedtls_ssl_config();
+      entropy = new mbedtls_entropy_context();
+      server = nullptr;
+   }
+
+   virtual ~Environment()
+   {
+      if (server)
+         delete server;
+
+      delete ctr_drbg;
+      delete conf;
+      delete entropy;
+   }
+};
+
+struct NetContext
+{
+   mbedtls_net_context* net_fd;
+
+   virtual void init()
+   {
+      mbedtls_net_init(net_fd);
+   }
+
+   virtual void close()
+   {
+      mbedtls_net_free(net_fd);
+   }
+
+   NetContext()
+   {
+      net_fd = new mbedtls_net_context();
+   }
+
+   virtual ~NetContext()
+   {
+      delete net_fd;
+   }
+};
+
+struct Context : public NetContext
+{   
+   mbedtls_ssl_context*        ssl;
+
+   void init() override
+   {
+      NetContext::init();
+      mbedtls_ssl_init(ssl);
+   }
+
+   void close() override
+   {
+      NetContext::close();
+      mbedtls_ssl_free(ssl);
+   }
+
+   Context()
+      : NetContext()
+   {
+      ssl = new mbedtls_ssl_context();
+   }
+   virtual ~Context()
+   {
+      delete ssl;
+   }
+};
+
+// =========================== Environment layer ================================================================
+
+EXTERN_DLL_EXPORT Environment* mbedtls_startup()
+{
+   Environment* env = new Environment();
+
+   env->init();
+
+   return env;
+}
+
+EXTERN_DLL_EXPORT void mbedtls_shutdown(Environment* env)
+{
+   env->close();
+
+   delete env;
+}
+
+EXTERN_DLL_EXPORT int mbedtls_drbg_seed_def(Environment* env, const unsigned char* custom, size_t len)
+{
+   return mbedtls_ctr_drbg_seed(env->ctr_drbg, mbedtls_entropy_func, env->entropy, custom, len);
+}
+
+EXTERN_DLL_EXPORT int mbedtls_config_ssl(Environment* env, int endpoint, int transport, int preset)
+{
+   return mbedtls_ssl_config_defaults(env->conf, endpoint, transport, preset);
+}
+
+EXTERN_DLL_EXPORT void mbedtls_client_setup(Environment* env, int authmode)
+{
+   mbedtls_ssl_conf_authmode(env->conf, authmode);
+
+   mbedtls_ssl_conf_rng(env->conf, mbedtls_ctr_drbg_random, env->ctr_drbg);
+}
+
+// =========================== Server Context layer ================================================================
+
+EXTERN_DLL_EXPORT void mbedtls_new_server_context(Environment* env)
+{
+   auto context = new ServerContext();
+   context->init();
+
+   env->server = context;
+}
+
+EXTERN_DLL_EXPORT int mbedtls_init_psa()
+{
+   return psa_crypto_init();
+}
+
+EXTERN_DLL_EXPORT int mbedtls_init_srvcert(Environment* env)
+{
+   return mbedtls_x509_crt_parse(env->server->srvcert, (const unsigned char*)mbedtls_test_srv_crt,
+      mbedtls_test_srv_crt_len);
+}
+
+EXTERN_DLL_EXPORT int mbedtls_init_cachain(Environment* env)
+{
+   return mbedtls_x509_crt_parse(env->server->cachain, (const unsigned char*)mbedtls_test_cas_pem,
+      mbedtls_test_cas_pem_len);
+}
+
+EXTERN_DLL_EXPORT int mbedtls_init_srv_key(Environment* env)
+{
+   return mbedtls_pk_parse_key(env->server->pkey, (const unsigned char*)mbedtls_test_srv_key,
+      mbedtls_test_srv_key_len, NULL, 0, mbedtls_ctr_drbg_random, env->ctr_drbg);
+}
+
+EXTERN_DLL_EXPORT int mbedtls_servercontext_setup(Environment* env)
+{
+   mbedtls_ssl_conf_session_cache(env->conf, env->server->cache,
+      mbedtls_ssl_cache_get,
+      mbedtls_ssl_cache_set);
+
+   mbedtls_ssl_conf_ca_chain(env->conf, env->server->cachain, NULL);
+
+   return mbedtls_ssl_conf_own_cert(env->conf, env->server->srvcert, env->server->pkey);
+}
+
+// =========================== Net Context layer ================================================================
+
+EXTERN_DLL_EXPORT NetContext* mbedtls_new_net_context()
+{
+   auto context = new NetContext();
+
+   context->init();
+
+   return context;
+}
+
+EXTERN_DLL_EXPORT int mbedtls_bind_net_context(NetContext* context, const char* portStr)
+{
+   return mbedtls_net_bind(context->net_fd, NULL, portStr, MBEDTLS_NET_PROTO_TCP);
+}
+
+EXTERN_DLL_EXPORT int mbedtls_accept_net_context(NetContext* listener, NetContext* client)
+{
+   return mbedtls_net_accept(listener->net_fd, client->net_fd, NULL, 0, NULL);
+}
+
+EXTERN_DLL_EXPORT void mbedtls_delete_net_context(NetContext* context)
+{
+   context->close();
+
+   delete context;
+}
+
+// =========================== Client Context layer ================================================================
+
+EXTERN_DLL_EXPORT Context* mbedtls_new_context()
+{
+   auto context = new Context();
+
+   context->init();
+
+   return context;
+}
+
+EXTERN_DLL_EXPORT void mbedtls_delete_context(Context* context)
+{
+   context->close();
+
+   delete context;
+}
+
+EXTERN_DLL_EXPORT void mbedtls_free_context(Context* context)
+{
+   context->close();
+}
+
+EXTERN_DLL_EXPORT int mbedtls_context_net_connect(Context* context, const char* host, const char* port, int proto)
+{
+   return mbedtls_net_connect(context->net_fd, host, port, proto);
+}
+
+EXTERN_DLL_EXPORT int mbedtls_context_setup(Environment* env, Context* context)
+{
+   return mbedtls_ssl_setup(context->ssl, env->conf);
+}
+
+EXTERN_DLL_EXPORT int mbedtls_context_ssl_set_hostname(Context* context, const char* hostname)
+{
+   return mbedtls_ssl_set_hostname(context->ssl, hostname);
+}
+
+EXTERN_DLL_EXPORT void mbedtls_context_ssl_set_bio_def(Context* context)
+{
+   mbedtls_ssl_set_bio(context->ssl, context->net_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+}
+
+EXTERN_DLL_EXPORT int mbedtls_context_read(Context* context, unsigned char* buf, size_t len)
+{
+   return mbedtls_ssl_read(context->ssl, buf, len);
+}
+
+EXTERN_DLL_EXPORT int mbedtls_context_write(Context* context, const unsigned char* buf, size_t len)
+{
+   return mbedtls_ssl_write(context->ssl, buf, len);
+}
+
+EXTERN_DLL_EXPORT int mbedtls_socket_data_available(Context* context)
+{
+   int retVal = mbedtls_net_poll(context->net_fd, MBEDTLS_NET_POLL_READ, 10);
+
+   return retVal == MBEDTLS_NET_POLL_READ;
+}
+
+EXTERN_DLL_EXPORT int mbedtls_socket_handshake(Context* context)
+{
+   int ret = 0;
+   while ((ret = mbedtls_ssl_handshake(context->ssl)) != 0) {
+      if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+         return ret;
+      }
+   }
+   return 0;
+}
+
+// ==================== Direct functionality ===========================
 
 EXTERN_DLL_EXPORT void net_init(mbedtls_net_context* ctx)
 {

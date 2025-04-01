@@ -50,3 +50,10 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+src/windows/mbedtls_wrapper/.vs/
+src/windows/mbedtls_wrapper/mbedtls_wrapper.vcxproj.filters
+src/windows/mbedtls_wrapper/mbedtls_wrapper.vcxproj.user
+src/windows/mbedtls_wrapper/mbedtls_wrapper/Debug/
+src/windows/mbedtls_wrapper/mbedtls_wrapper/Release/
+src/windows/mbedtls_wrapper/packages/mbedtls-v143-static.3.5.0/
+src/windows/mbedtls_wrapper/Release/
