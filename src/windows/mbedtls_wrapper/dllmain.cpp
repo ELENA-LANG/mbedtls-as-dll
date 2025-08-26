@@ -132,6 +132,13 @@ EXTERN_DLL_EXPORT int context_write(Context* context, const unsigned char* buf, 
    return mbedtls_ssl_write(context->ssl, buf, len);
 }
 
+EXTERN_DLL_EXPORT size_t socket_data_available(Context* context)
+{
+   mbedtls_ssl_read(context->ssl, nullptr, 0);
+
+   return mbedtls_ssl_get_bytes_avail(context->ssl);
+}
+
 // ==================== Direct functionality ===========================
 
 EXTERN_DLL_EXPORT void net_init(mbedtls_net_context* ctx)
