@@ -132,11 +132,11 @@ EXTERN_DLL_EXPORT int context_write(Context* context, const unsigned char* buf, 
    return mbedtls_ssl_write(context->ssl, buf, len);
 }
 
-EXTERN_DLL_EXPORT size_t socket_data_available(Context* context)
+EXTERN_DLL_EXPORT int socket_data_available(Context* context)
 {
-   mbedtls_ssl_read(context->ssl, nullptr, 0);
+   int retVal = mbedtls_net_poll(context->server_fd, MBEDTLS_NET_POLL_READ, 10);
 
-   return mbedtls_ssl_get_bytes_avail(context->ssl);
+   return retVal == MBEDTLS_NET_POLL_READ;
 }
 
 // ==================== Direct functionality ===========================
