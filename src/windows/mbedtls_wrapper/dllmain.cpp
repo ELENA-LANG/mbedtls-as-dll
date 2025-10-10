@@ -177,9 +177,9 @@ EXTERN_DLL_EXPORT int mbedtls_drbg_seed_def(const unsigned char* custom, size_t 
    return mbedtls_ctr_drbg_seed(env->ctr_drbg, mbedtls_entropy_func, env->entropy, custom, len);
 }
 
-EXTERN_DLL_EXPORT int mbedtls_ssl_config_defaults(int endpoint, int transport, int preset)
+EXTERN_DLL_EXPORT int mbedtls_config_ssl(int endpoint, int transport, int preset)
 {
-   printf("mbedtls_ssl_config_defaults");
+   printf("mbedtls_config_ssl");
 
    return mbedtls_ssl_config_defaults(env->conf, endpoint, transport, preset);
 }
@@ -193,7 +193,7 @@ EXTERN_DLL_EXPORT void mbedtls_client_setup(int authmode)
 
 // =========================== Server Context layer ================================================================
 
-EXTERN_DLL_EXPORT ServerContext* new_server_context()
+EXTERN_DLL_EXPORT ServerContext* mbedtls_new_server_context()
 {
    mbedtls_startup();
 
@@ -202,26 +202,26 @@ EXTERN_DLL_EXPORT ServerContext* new_server_context()
    return context;
 }
 
-EXTERN_DLL_EXPORT void delete_server_context(ServerContext* context)
+EXTERN_DLL_EXPORT void mbedtls_delete_server_context(ServerContext* context)
 {
    delete context;
 
    mbedtls_shutdown();
 }
 
-EXTERN_DLL_EXPORT void init_server_context(ServerContext* context)
+EXTERN_DLL_EXPORT void mbedtls_init_server_context(ServerContext* context)
 {
    context->init();
 }
 
-EXTERN_DLL_EXPORT void free_server_context(ServerContext* context)
+EXTERN_DLL_EXPORT void mbedtls_free_server_context(ServerContext* context)
 {
    context->close();
 }
 
 // =========================== Client Context layer ================================================================
 
-EXTERN_DLL_EXPORT Context* new_context()
+EXTERN_DLL_EXPORT Context* mbedtls_new_context()
 {
    mbedtls_startup();
 
@@ -230,58 +230,58 @@ EXTERN_DLL_EXPORT Context* new_context()
    return context;
 }
 
-EXTERN_DLL_EXPORT void delete_context(Context* context)
+EXTERN_DLL_EXPORT void mbedtls_delete_context(Context* context)
 {
    delete context;
 
    mbedtls_shutdown();
 }
 
-EXTERN_DLL_EXPORT void init_context(Context* context)
+EXTERN_DLL_EXPORT void mbedtls_init_context(Context* context)
 {
    context->init();
 }
 
-EXTERN_DLL_EXPORT void free_context(Context* context)
+EXTERN_DLL_EXPORT void mbedtls_free_context(Context* context)
 {
    context->close();
 }
 
-EXTERN_DLL_EXPORT int context_net_connect(Context* context, const char* host, const char* port, int proto)
+EXTERN_DLL_EXPORT int mbedtls_context_net_connect(Context* context, const char* host, const char* port, int proto)
 {
    printf("mbedtls_net_connect");
 
    return mbedtls_net_connect(context->server_fd, host, port, proto);
 }
 
-EXTERN_DLL_EXPORT int context_setup(Context* context)
+EXTERN_DLL_EXPORT int mbedtls_context_setup(Context* context)
 {
    printf("mbedtls_ssl_setup");
 
    return mbedtls_ssl_setup(context->ssl, env->conf);
 }
 
-EXTERN_DLL_EXPORT int context_ssl_set_hostname(Context* context, const char* hostname)
+EXTERN_DLL_EXPORT int mbedtls_context_ssl_set_hostname(Context* context, const char* hostname)
 {
    return mbedtls_ssl_set_hostname(context->ssl, hostname);
 }
 
-EXTERN_DLL_EXPORT void context_ssl_set_bio_def(Context* context)
+EXTERN_DLL_EXPORT void mbedtls_context_ssl_set_bio_def(Context* context)
 {
    mbedtls_ssl_set_bio(context->ssl, context->server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
 }
 
-EXTERN_DLL_EXPORT int context_read(Context* context, unsigned char* buf, size_t len)
+EXTERN_DLL_EXPORT int mbedtls_context_read(Context* context, unsigned char* buf, size_t len)
 {
    return mbedtls_ssl_read(context->ssl, buf, len);
 }
 
-EXTERN_DLL_EXPORT int context_write(Context* context, const unsigned char* buf, size_t len)
+EXTERN_DLL_EXPORT int mbedtls_context_write(Context* context, const unsigned char* buf, size_t len)
 {
    return mbedtls_ssl_write(context->ssl, buf, len);
 }
 
-EXTERN_DLL_EXPORT int socket_data_available(Context* context)
+EXTERN_DLL_EXPORT int mbedtls_socket_data_available(Context* context)
 {
    int retVal = mbedtls_net_poll(context->server_fd, MBEDTLS_NET_POLL_READ, 10);
 
