@@ -44,7 +44,9 @@ struct Environment
 
    void init()
    {
-      printf("Environment.init\n");
+      printf("mbedtls_ctr_drbg_init\n");
+      printf("mbedtls_ssl_config_init\n");
+      printf("mbedtls_entropy_init\n");
 
       mbedtls_ctr_drbg_init(ctr_drbg);
       mbedtls_ssl_config_init(conf);
@@ -53,7 +55,9 @@ struct Environment
 
    void close()
    {
-      printf("Environment.close\n");
+      printf("mbedtls_ctr_drbg_free\n");
+      printf("mbedtls_ssl_config_free\n");
+      printf("mbedtls_entropy_free\n");
 
       mbedtls_ctr_drbg_free(ctr_drbg);
       mbedtls_ssl_config_free(conf);
@@ -82,7 +86,8 @@ struct Context
 
    void init()
    {
-      printf("Context.init\n");
+      printf("mbedtls_net_init\n");
+      printf("mbedtls_ssl_init\n");
 
       mbedtls_net_init(server_fd);
       mbedtls_ssl_init(ssl);
@@ -90,7 +95,8 @@ struct Context
 
    void close()
    {
-      printf("Context.close\n");
+      printf("mbedtls_net_free\n");
+      printf("mbedtls_ssl_free\n");
 
       mbedtls_net_free(server_fd);
       mbedtls_ssl_free(ssl);
@@ -176,21 +182,22 @@ EXTERN_DLL_EXPORT void mbedtls_shutdown()
 
 EXTERN_DLL_EXPORT int mbedtls_drbg_seed_def(const unsigned char* custom, size_t len)
 {
-   printf("mbedtls_drbg_seed_def\n");
+   printf("mbedtls_ctr_drbg_seed\n");
 
    return mbedtls_ctr_drbg_seed(env->ctr_drbg, mbedtls_entropy_func, env->entropy, custom, len);
 }
 
 EXTERN_DLL_EXPORT int mbedtls_config_ssl(int endpoint, int transport, int preset)
 {
-   printf("mbedtls_config_ssl\n");
+   printf("mbedtls_ssl_config_defaults\n");
 
    return mbedtls_ssl_config_defaults(env->conf, endpoint, transport, preset);
 }
 
 EXTERN_DLL_EXPORT void mbedtls_client_setup(int authmode)
 {
-   printf("mbedtls_client_setup\n");
+   printf("mbedtls_ssl_conf_authmode\n");
+   printf("mbedtls_ssl_conf_rng\n");
 
    mbedtls_ssl_conf_authmode(env->conf, authmode);
 
@@ -261,11 +268,13 @@ EXTERN_DLL_EXPORT int mbedtls_context_setup(Context* context)
 
 EXTERN_DLL_EXPORT int mbedtls_context_ssl_set_hostname(Context* context, const char* hostname)
 {
+   printf("mbedtls_ssl_set_hostname\n");
    return mbedtls_ssl_set_hostname(context->ssl, hostname);
 }
 
 EXTERN_DLL_EXPORT void mbedtls_context_ssl_set_bio_def(Context* context)
 {
+   printf("mbedtls_ssl_set_bio\n");
    mbedtls_ssl_set_bio(context->ssl, context->server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
 }
 
@@ -276,6 +285,7 @@ EXTERN_DLL_EXPORT int mbedtls_context_read(Context* context, unsigned char* buf,
 
 EXTERN_DLL_EXPORT int mbedtls_context_write(Context* context, const unsigned char* buf, size_t len)
 {
+   printf("mbedtls_ssl_write\n");
    return mbedtls_ssl_write(context->ssl, buf, len);
 }
 
