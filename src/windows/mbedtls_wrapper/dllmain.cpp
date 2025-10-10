@@ -108,6 +108,8 @@ struct ServerContext
 
    void init()
    {
+      printf("ServerContext.init");
+
       mbedtls_ssl_cache_init(cache);
       mbedtls_x509_crt_init(srvcert);
       mbedtls_x509_crt_init(cachain);
@@ -115,6 +117,8 @@ struct ServerContext
 
    void close()
    {
+      printf("ServerContext.close");
+
       mbedtls_x509_crt_free(srvcert);
       mbedtls_x509_crt_free(cachain);
       mbedtls_ssl_cache_free(cache);
@@ -168,11 +172,15 @@ EXTERN_DLL_EXPORT void mbedtls_shutdown()
 
 EXTERN_DLL_EXPORT int mbedtls_drbg_seed_def(const unsigned char* custom, size_t len)
 {
+   printf("mbedtls_ctr_drbg_seed");
+
    return mbedtls_ctr_drbg_seed(env->ctr_drbg, mbedtls_entropy_func, env->entropy, custom, len);
 }
 
 EXTERN_DLL_EXPORT int mbedtls_ssl_config_defaults(int endpoint, int transport, int preset)
 {
+   printf("mbedtls_ssl_config_defaults");
+
    return mbedtls_ssl_config_defaults(env->conf, endpoint, transport, preset);
 }
 
@@ -241,11 +249,15 @@ EXTERN_DLL_EXPORT void free_context(Context* context)
 
 EXTERN_DLL_EXPORT int context_net_connect(Context* context, const char* host, const char* port, int proto)
 {
+   printf("mbedtls_net_connect");
+
    return mbedtls_net_connect(context->server_fd, host, port, proto);
 }
 
 EXTERN_DLL_EXPORT int context_setup(Context* context)
 {
+   printf("mbedtls_ssl_setup");
+
    return mbedtls_ssl_setup(context->ssl, env->conf);
 }
 
