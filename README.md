@@ -19,5 +19,6 @@ The expected output path for x86 is <mbedtls-as-dll-root-path>\out\build\x86-Deb
 
 You can import all required files using a script
 
-   cd <mbedtls-as-dll-root-path>\src
-   scripts\import.bat <Mbed-TLS-root-path>
+    cd <mbedtls-as-dll-root-path>\src
+    scripts\import.bat <Mbed-TLS-root-path>
+
