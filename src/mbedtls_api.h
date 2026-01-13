@@ -24,9 +24,21 @@
 #ifndef MBEDTLS_WRAPPER_H
 #define MBEDTLS_WRAPPER_H
 
-#include "mbedtls/ssl.h"
+
+#define MBEDTLS_DECLARE_PRIVATE_IDENTIFIERS
+
+#include "mbedtls/mbedtls_config.h"
+
+#include "mbedtls/build_info.h"
+
+#include "mbedtls/platform.h"
+
 #include "mbedtls/net_sockets.h"
+#include "mbedtls/ssl.h"
+#include "mbedtls/private/entropy.h"
 #include "mbedtls/private/ctr_drbg.h"
+#include "mbedtls/error.h"
+#include "test/certs.h"
 
 #include "mbedtls/ssl_cache.h"
 
@@ -174,10 +186,10 @@ namespace elena_mbedtls
          return mbedtls_net_connect(net_fd, host, port, proto);
       }
 
-      int crt_parse(const char* cas_pem)
+      int crt_parse(const char* cas_pem, size_t cas_pem_len)
       {
          return mbedtls_x509_crt_parse(cacert, (const unsigned char*)cas_pem,
-            sizeof(cas_pem));
+            cas_pem_len);
       }
 
       int setup(Environment* env)

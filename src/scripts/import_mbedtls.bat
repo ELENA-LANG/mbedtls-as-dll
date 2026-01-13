@@ -1,6 +1,8 @@
 REM NOTE : the script MUST be called from the root folder
 
 xcopy %1\include\mbedtls\net_sockets.h  library\include\mbedtls\ /I /Y
+xcopy %1\include\mbedtls\error.h library\include\mbedtls\ /I /Y
+xcopy %1\include\mbedtls\mbedtls_config.h library\include\mbedtls\ /I /Y
 
 xcopy %1\include\mbedtls\ssl.h  library\include\mbedtls\ /I /Y
 xcopy %1\include\mbedtls\ssl_*.h  library\include\mbedtls\ /I /Y
@@ -31,14 +33,11 @@ xcopy %1\tf-psa-crypto\drivers\builtin\include\mbedtls\config_adjust_legacy_cryp
 
 xcopy %1\tf-psa-crypto\include\tf-psa-crypto\build_info.h library\include\mbedtls\ /I /Y 
 
+xcopy %1\tests\include\test\certs.h library\include\test\ /I /Y 
+
 xcopy %1\out\build\x86-Debug\library\mbedtls.lib library\x86\ /I /Y 
 xcopy %1\out\build\x86-Debug\library\mbedx509.lib library\x86\ /I /Y 
 xcopy %1\out\build\x86-Debug\library\tfpsacrypto.lib library\x86\ /I /Y 
-
-
-
-%1\tf-psa-crypto\include\mbedtls\ 
-
 
 
 
