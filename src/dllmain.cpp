@@ -18,72 +18,7 @@ using namespace elena_mbedtls;
 
 EXTERN_DLL_EXPORT Environment* mbedtls_startup()
 {
-   getchar();
-
-
-// =====================================
-
-//   int ret = 1, len;
-//   int exit_code = 0;
-//   mbedtls_net_context server_fd;
-//   uint32_t flags;
-//   unsigned char buf[1024];
-//   const char* pers = "ssl_client1";
-//
-//   mbedtls_entropy_context entropy;
-//   mbedtls_ctr_drbg_context ctr_drbg;
-//   mbedtls_ssl_context ssl;
-//   mbedtls_ssl_config conf;
-//   mbedtls_x509_crt cacert;
-//
-////
-////#if defined(MBEDTLS_DEBUG_C)
-////   mbedtls_debug_set_threshold(DEBUG_LEVEL);
-////#endif
-//
-//   /*
-//    * 0. Initialize the RNG and the session data
-//    */
-//   mbedtls_net_init(&server_fd);
-//   mbedtls_ssl_init(&ssl);
-//   mbedtls_ssl_config_init(&conf);
-//   mbedtls_x509_crt_init(&cacert);
-//   mbedtls_ctr_drbg_init(&ctr_drbg);
-//   mbedtls_entropy_init(&entropy);
-//
-//   psa_status_t status = psa_crypto_init();
-//   if (status != PSA_SUCCESS) {
-//      printf("Failed to initialize PSA Crypto implementation: %d\n",
-//         (int)status);
-//      //goto exit;
-//   }
-//
-//   mbedtls_printf("\n  . Seeding the random number generator...");
-//   fflush(stdout);
-//
-//
-//   if ((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
-//      (const unsigned char*)pers,
-//      strlen(pers))) != 0) {
-//      printf(" failed\n  ! mbedtls_ctr_drbg_seed returned %d\n", ret);
-//      //goto exit;
-//   }
-//
-//   mbedtls_printf(" ok\n");
-//
-//   mbedtls_printf("  . Loading the CA root certificate ...");
-//   fflush(stdout);
-//
-//   ret = mbedtls_x509_crt_parse(&cacert, (const unsigned char*)TEST_CA_CRT,
-//      sizeof(TEST_CA_CRT));
-//   if (ret < 0) {
-//      mbedtls_printf(" failed\n  !  mbedtls_x509_crt_parse returned -0x%x\n\n",
-//         (unsigned int)-ret);
-//      //goto exit;
-//   }
-//
-//   mbedtls_printf(" ok (%d skipped)\n", ret);
-// =====================================
+   // getchar();
 
    Environment* env = new Environment();
 
@@ -99,7 +34,7 @@ EXTERN_DLL_EXPORT int mbedtls_drbg_seed_def(Environment* env, const unsigned cha
 
 EXTERN_DLL_EXPORT int mbedtls_config_ssl(Environment* env, int endpoint, int transport, int preset)
 {
-   return mbedtls_ssl_config_defaults(env->conf, endpoint, transport, preset);
+   return env->config(endpoint, transport, preset);
 }
 
 EXTERN_DLL_EXPORT int mbedtls_init_psa()
@@ -132,7 +67,7 @@ EXTERN_DLL_EXPORT int mbedtls_cert_parse(Context* ctx)
 
 EXTERN_DLL_EXPORT void mbedtls_client_setup(Environment* env, int authmode)
 {
-   env->client_setup(authmode);   
+   env->client_setup(authmode);
 }
 
 EXTERN_DLL_EXPORT int mbedtls_context_setup(Environment* env, Context* context)

@@ -100,6 +100,11 @@ namespace elena_mbedtls
          mbedtls_entropy_init(entropy);
       }
 
+      int config(int endpoint, int transport, int preset)
+      {
+         return mbedtls_ssl_config_defaults(conf, endpoint, transport, preset);
+      }
+
       void client_setup(int authmode)
       {
          mbedtls_ssl_conf_authmode(conf, authmode);
@@ -242,7 +247,14 @@ namespace elena_mbedtls
 
       int write(const unsigned char* buf, size_t len)
       {
-         return mbedtls_ssl_write(ssl, buf, len);
+         int ret = 0;
+         while ((ret = mbedtls_ssl_write(ssl, buf, len)) <= 0) {
+            if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+               return ret;
+            }
+         }
+
+         return ret;
       }
 
       int data_available()
