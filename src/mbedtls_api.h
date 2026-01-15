@@ -50,21 +50,30 @@ namespace elena_mbedtls
    {
       mbedtls_ssl_cache_context* cache;
       mbedtls_x509_crt* srvcert;
-      mbedtls_x509_crt* cachain;
       mbedtls_pk_context* pkey;
 
       void init()
       {
          mbedtls_ssl_cache_init(cache);
          mbedtls_x509_crt_init(srvcert);
-         mbedtls_x509_crt_init(cachain);
          mbedtls_pk_init(pkey);
+      }
+
+      int parse_srvcert(const char* srv_crt, size_t srv_crt_len)
+      {
+         return mbedtls_x509_crt_parse(srvcert, (const unsigned char*)srv_crt,
+            srv_crt_len);
+      }
+
+      int parse_key(const char* srv_key, size_t srv_key_len)
+      {
+         return mbedtls_pk_parse_key(pkey, (const unsigned char*)srv_key,
+            srv_key_len, NULL, 0);
       }
 
       void close()
       {
          mbedtls_x509_crt_free(srvcert);
-         mbedtls_x509_crt_free(cachain);
          mbedtls_ssl_cache_free(cache);
          mbedtls_pk_free(pkey);
       }
@@ -73,12 +82,10 @@ namespace elena_mbedtls
       {
          cache = new mbedtls_ssl_cache_context();
          srvcert = new mbedtls_x509_crt();
-         cachain = new mbedtls_x509_crt();
          pkey = new mbedtls_pk_context();
       }
       virtual ~ServerContext()
       {
-         delete cachain;
          delete srvcert;
          delete cache;
          delete pkey;
@@ -108,6 +115,20 @@ namespace elena_mbedtls
       void client_setup(int authmode)
       {
          mbedtls_ssl_conf_authmode(conf, authmode);
+      }
+
+      void initCache()
+      {
+         mbedtls_ssl_conf_session_cache(conf, server->cache,
+            mbedtls_ssl_cache_get,
+            mbedtls_ssl_cache_set);
+
+         mbedtls_ssl_conf_ca_chain(conf, server->srvcert->next, NULL);
+      }
+
+      int config_own_cert()
+      {
+         return mbedtls_ssl_conf_own_cert(conf, server->srvcert, server->pkey);
       }
 
       void close()
@@ -158,9 +179,19 @@ namespace elena_mbedtls
          mbedtls_net_init(net_fd);
       }
 
+      int net_bind(const char* portStr)
+      {
+         return mbedtls_net_bind(net_fd, NULL, portStr, MBEDTLS_NET_PROTO_TCP);
+      }
+
       virtual void close()
       {
          mbedtls_net_free(net_fd);
+      }
+
+      int accept(NetContext* client)
+      {
+         return mbedtls_net_accept(net_fd, client->net_fd, NULL, 0, NULL);
       }
 
       NetContext()
@@ -183,7 +214,9 @@ namespace elena_mbedtls
       {
          NetContext::init();
          mbedtls_ssl_init(ssl);
-         mbedtls_x509_crt_init(cacert);
+
+         if (cacert)
+            mbedtls_x509_crt_init(cacert);
       }
 
       int connect(const char* host, const char* port, int proto)
@@ -193,13 +226,17 @@ namespace elena_mbedtls
 
       int crt_parse(const char* cas_pem, size_t cas_pem_len)
       {
+         if (!cacert)
+            return -1;
+
          return mbedtls_x509_crt_parse(cacert, (const unsigned char*)cas_pem,
             cas_pem_len);
       }
 
       int setup(Environment* env)
       {
-         mbedtls_ssl_conf_ca_chain(env->conf, cacert, NULL);
+         if (cacert)
+            mbedtls_ssl_conf_ca_chain(env->conf, cacert, NULL);
 
          return mbedtls_ssl_setup(ssl, env->conf);
       }
@@ -268,19 +305,24 @@ namespace elena_mbedtls
       {
          NetContext::close();
          mbedtls_ssl_free(ssl);
-         mbedtls_x509_crt_free(cacert);
+
+         if (cacert)
+            mbedtls_x509_crt_free(cacert);
       }
 
-      Context()
+      Context(bool withCaCert)
          : NetContext()
       {
          ssl = new mbedtls_ssl_context();
-         cacert = new mbedtls_x509_crt();
+
+         cacert = withCaCert ? new mbedtls_x509_crt() : nullptr;
       }
       virtual ~Context()
       {
          delete ssl;
-         delete cacert;
+
+         if (cacert)
+            delete cacert;
       }
    };
 }

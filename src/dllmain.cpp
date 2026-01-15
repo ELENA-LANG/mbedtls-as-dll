@@ -18,7 +18,7 @@ using namespace elena_mbedtls;
 
 EXTERN_DLL_EXPORT Environment* mbedtls_startup()
 {
-   // getchar();
+   //getchar();
 
    Environment* env = new Environment();
 
@@ -53,7 +53,16 @@ EXTERN_DLL_EXPORT void mbedtls_shutdown(Environment* env)
 
 EXTERN_DLL_EXPORT Context* mbedtls_new_context()
 {
-   auto context = new Context();
+   auto context = new Context(true);
+
+   context->init();
+
+   return context;
+}
+
+EXTERN_DLL_EXPORT Context* mbedtls_new_remote_context()
+{
+   auto context = new Context(false);
 
    context->init();
 
@@ -131,47 +140,44 @@ EXTERN_DLL_EXPORT void mbedtls_free_context(Context* context)
 
 EXTERN_DLL_EXPORT void mbedtls_new_server_context(Environment* env)
 {
-/*   auto context = new ServerContext();
+   auto context = new ServerContext();
    context->init();
 
-   env->server = context;*/
+   env->server = context;
 }
 
 EXTERN_DLL_EXPORT int mbedtls_init_srvcert(Environment* env)
 {
-   //return mbedtls_x509_crt_parse(env->server->srvcert, (const unsigned char*)mbedtls_test_srv_crt,
-   //   mbedtls_test_srv_crt_len);
+   if (env->server) {
+      int ret = env->server->parse_srvcert(TEST_SRV_CRT, sizeof(TEST_SRV_CRT));
+      if (!ret)
+         ret = env->server->parse_srvcert(TEST_CA_CRT, sizeof(TEST_CA_CRT));
 
-   return 0;
-}
+      return ret;
+   }
+      return env->server->parse_srvcert(TEST_SRV_CRT, sizeof(TEST_SRV_CRT));
 
-EXTERN_DLL_EXPORT int mbedtls_init_cachain(Environment* env)
-{
-//   return mbedtls_x509_crt_parse(env->server->cachain, (const unsigned char*)mbedtls_test_cas_pem,
-//      mbedtls_test_cas_pem_len);
-
-   return 0;
+   return -1;
 }
 
 EXTERN_DLL_EXPORT int mbedtls_init_srv_key(Environment* env)
 {
-//   return mbedtls_pk_parse_key(env->server->pkey, (const unsigned char*)mbedtls_test_srv_key,
-//      mbedtls_test_srv_key_len, NULL, 0, mbedtls_ctr_drbg_random, env->ctr_drbg);
+   if (env->server) {
+      return env->server->parse_key(TEST_SRV_KEY, sizeof(TEST_SRV_KEY));
+   }
 
-   return 0;
+   return -1;
 }
 
 EXTERN_DLL_EXPORT int mbedtls_servercontext_setup(Environment* env)
 {
-   //mbedtls_ssl_conf_session_cache(env->conf, env->server->cache,
-   //   mbedtls_ssl_cache_get,
-   //   mbedtls_ssl_cache_set);
+   if (env->server) {
+      env->initCache();
 
-   //mbedtls_ssl_conf_ca_chain(env->conf, env->server->cachain, NULL);
+      return env->config_own_cert();
+   }
 
-   //return mbedtls_ssl_conf_own_cert(env->conf, env->server->srvcert, env->server->pkey);
-
-   return 0;
+   return -1;
 }
 
 // =========================== Net Context layer ================================================================
@@ -187,16 +193,12 @@ EXTERN_DLL_EXPORT NetContext* mbedtls_new_net_context()
 
 EXTERN_DLL_EXPORT int mbedtls_bind_net_context(NetContext* context, const char* portStr)
 {
-   //return mbedtls_net_bind(context->net_fd, NULL, portStr, MBEDTLS_NET_PROTO_TCP);
-
-   return 0;
+   return context->net_bind(portStr);
 }
 
 EXTERN_DLL_EXPORT int mbedtls_accept_net_context(NetContext* listener, NetContext* client)
 {
-   //return mbedtls_net_accept(listener->net_fd, client->net_fd, NULL, 0, NULL);
-
-   return 0;
+   return listener->accept(client);
 }
 
 EXTERN_DLL_EXPORT void mbedtls_delete_net_context(NetContext* context)
